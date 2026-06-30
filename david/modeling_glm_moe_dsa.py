@@ -139,6 +139,9 @@ class GlmMoeDsaDecoderLayer(GradientCheckpointingLayer):
         hidden_states = self.mlp(hidden_states)
 
         #add
+        hidden_states = residual + hidden_states
+
+        return hidden_states
 
 
 class GlmMoeDsaRotaryEmbedding(nn.Module):
@@ -156,9 +159,24 @@ class GlmMoeDsaModel(GlmMoeDsaPreTrainedModel):
             [GlmMoeDsaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
         self.norm = GlmMoeDsaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.rotary_emb = GlmMoeDsaRotaryEmbedding(config=config)
-        self.gradient_checkpointing = False
+        
+    def forward(
+        self,
+        inputs_embeds: torch.FloatTensor | None = None,
+    ):
+        if inputs_embeds is None:
+            inputs_embeds: torch.Tensor = self.embed_tokens(input_ids)
 
+        hidden_states = input_embeds
 
+        for decode_layer in self.layers[: self.config.num_hidden_layers]:
+            hidden_states = decode_layer(
+
+            )
+        
+        hidden_states = self.norm(hidden_states)
+
+        return hidden_states
+    
 
 class GlmMoeDsaForCausalLM(GlmMoeDsaPreTrainedModel, GenerationMixin):
