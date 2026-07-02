@@ -202,3 +202,15 @@ class GlmMoeDsaForCausalLM(GlmMoeDsaPreTrainedModel, GenerationMixin):
         hidden_states = self.model(input_ids)          # FIX: pass input_ids; model returns a tensor
         logits = self.lm_head(hidden_states)           # produce logits
         return logits                                  # FIX: added return
+
+    def generate(self, input_ids, max_new_tokens=20, eos_token_id=None):
+        """The autoregressive loop (HF's version lives in GenerationMixin.generate):
+        forward -> pick next token -> append -> stop on EOS or the max ceiling."""
+        for _ in range(max_new_tokens):
+            with torch.no_grad():
+                logits = self(input_ids)                       # (batch, seq, vocab)
+            next_token = logits[0, -1].argmax()                # greedy decoding
+            input_ids = torch.cat([input_ids, next_token.view(1, 1)], dim=1)
+            if eos_token_id is not None and next_token.item() == eos_token_id:
+                break                                          # model says "I'm done"
+        return input_ids

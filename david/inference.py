@@ -46,23 +46,13 @@ class TextGenerationPipeline:
         input_ids = model_inputs["input_ids"]
         prompt_text = model_inputs.pop("prompt_text")
 
-        generated_sequence = self.generate(input_ids, **generate_kwargs)
+        generated_sequence = self.model.generate(input_ids, **generate_kwargs)   # reference line 403
 
         return {
             "generated_sequence": generated_sequence,
             "input_ids": input_ids,
             "prompt_text": prompt_text,
         }
-
-    def generate(self, input_ids, max_new_tokens=20):
-        """The autoregressive loop (the real pipeline calls model.generate for this):
-        forward -> argmax last token -> append -> repeat."""
-        for _ in range(max_new_tokens):
-            with torch.no_grad():
-                logits = self.model(input_ids)                 # (1, seq, vocab)
-            next_token = logits[0, -1].argmax()                # greedy decoding
-            input_ids = torch.cat([input_ids, next_token.view(1, 1)], dim=1)
-        return input_ids
 
     def postprocess(self, model_outputs):
         """ids -> text (reference: line 432). Decode only the NEW tokens, then
