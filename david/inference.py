@@ -6,6 +6,8 @@ Each stage passes a dict to the next, exactly like the real pipeline. Only the
 tokenizer is a toy (char-level); swap in the real GLM tokenizer JSON later and
 nothing else changes.
 """
+import argparse
+
 import torch
 
 from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM   # YOUR classes
@@ -66,12 +68,26 @@ class TextGenerationPipeline:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Text generation with the toy GLM model")
+    parser.add_argument("--prompt", help="one-shot prompt; omit for interactive mode")
+    parser.add_argument("--max-new-tokens", type=int, default=20)
+    args = parser.parse_args()
+
+    # expensive one-time setup: build model + pipeline ONCE
     config = GlmMoeDsaConfig(vocab_size=96, hidden_size=128, num_hidden_layers=2,
                              num_attention_heads=4, intermediate_size=256)   # toy sizes
     config._attn_implementation = "eager"
     model = GlmMoeDsaForCausalLM(config)
     model.eval()
-
     pipe = TextGenerationPipeline(model=model, tokenizer=CharTokenizer())
-    result = pipe("bello", max_new_tokens=20)
-    print(result)          # gibberish after the prompt — weights are random, untrained
+
+    # cheap repeated call: one-shot (CLI) or loop (REPL) — output is gibberish until trained
+    if args.prompt is not None:
+        print(pipe(args.prompt, max_new_tokens=args.max_new_tokens))
+    else:
+        print("interactive mode — Ctrl-C or empty line to quit")
+        while True:
+            prompt = input("> ")
+            if not prompt:
+                break
+            print(pipe(prompt, max_new_tokens=args.max_new_tokens))
