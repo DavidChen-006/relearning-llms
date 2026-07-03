@@ -88,7 +88,8 @@ class GlmMoeDsaAttention(nn.Module):
         key_states = key_states.view(batch, seq, self.num_heads, self.head_dim).transpose(1, 2)
         value_states = value_states.view(batch, seq, self.num_heads, self.head_dim).transpose(1, 2)
 
-        query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+        query_states = apply_rotary_pos_emb(query_states, cos, sin)
+        key_states = apply_rotary_pos_emb(key_states, cos, sin)
 
         combined_mask = attention_mask
 
