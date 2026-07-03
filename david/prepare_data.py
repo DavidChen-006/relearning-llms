@@ -1,37 +1,29 @@
-"""prepare_data.py — turn raw Shakespeare text into training-ready id tensors.
+"""prepare_data.py — encode raw Shakespeare into training-ready id files, using a real
+BPE tokenizer (minimind's 6400-vocab tokenizer.json, HF format — same layout as GLM's).
 
-The whole 'dataset pipeline' at char level (nanoGPT's prepare.py, adapted):
-  1. read text  2. build the char vocab from it  3. encode text -> one long id tensor
-  4. split 90/10 train/val  5. save everything to data/prepared.pt
+Mirrors the real package split:
+  tokenizer.json          <- the tokenizer (portable JSON, lives in the repo)
+  data/train.bin          <- encoded ids, first 90%   (uint16 binary, regenerable)
+  data/val.bin            <- encoded ids, last 10%
 """
-import torch
+import numpy as np
+from transformers import AutoTokenizer
 
 text = open("data/tinyshakespeare.txt").read()
 
-# ---- the tokenizer IS the vocab: char -> index in the sorted unique-char list ----
-chars = sorted(set(text))
-vocab_size = len(chars)                                  # 65
-stoi = {ch: i for i, ch in enumerate(chars)}             # encode table (string -> int)
-itos = {i: ch for i, ch in enumerate(chars)}             # decode table (int -> string)
+tokenizer = AutoTokenizer.from_pretrained(".")           # reads tokenizer.json next to this script
+ids = tokenizer(text)["input_ids"]                       # BPE-encode the whole corpus
 
-# ---- encode the entire corpus into one long tensor of ids ----
-data = torch.tensor([stoi[ch] for ch in text], dtype=torch.long)
-
-# ---- train/val split: last 10% held out to measure loss on UNSEEN text ----
-n = int(0.9 * len(data))
-train_data, val_data = data[:n], data[n:]
-
-torch.save(
-    {"train": train_data, "val": val_data, "stoi": stoi, "itos": itos, "vocab_size": vocab_size},
-    "data/prepared.pt",
-)
+n = int(0.9 * len(ids))                                  # 90/10: val = unseen text for honest loss
+train_ids = np.array(ids[:n], dtype=np.uint16)           # uint16 fits vocab 6400 (max 65535)
+val_ids = np.array(ids[n:], dtype=np.uint16)
+train_ids.tofile("data/train.bin")
+val_ids.tofile("data/val.bin")
 
 if __name__ == "__main__":
-    print(f"vocab_size: {vocab_size}")
-    print(f"total ids:  {len(data):,}   train: {len(train_data):,}   val: {len(val_data):,}")
-    sample = text[:32]
-    ids = [stoi[ch] for ch in sample]
-    back = "".join(itos[i] for i in ids)
-    print(f"round-trip: {sample!r} -> {ids[:8]}... -> {back!r}")
-    assert back == sample, "encode/decode must round-trip"
-    print("round-trip OK, saved to data/prepared.pt")
+    print(f"vocab_size: {tokenizer.vocab_size}")
+    print(f"chars in:   {len(text):,}")
+    print(f"tokens out: {len(ids):,}   train: {len(train_ids):,}   val: {len(val_ids):,}")
+    print(f"compression: {len(text) / len(ids):.2f} chars/token")
+    sample_ids = train_ids[:12].tolist()
+    print(f"round-trip: {sample_ids} -> {tokenizer.decode(sample_ids)!r}")

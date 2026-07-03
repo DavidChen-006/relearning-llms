@@ -7,22 +7,11 @@ tokenizer is a toy (char-level); swap in the real GLM tokenizer JSON later and
 nothing else changes.
 """
 import argparse
+import os
 
-import torch
+from transformers import AutoTokenizer
 
 from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM   # YOUR classes
-
-
-class CharTokenizer:
-    """Toy stand-in for the real tokenizer (tokenizer.json). Same encode/decode contract.
-    vocab_size=96 = printable ASCII (chars 32..127) shifted to ids 0..95."""
-
-    def __call__(self, text, return_tensors="pt"):            # HF tokenizers are callable
-        ids = torch.tensor([[ord(ch) - 32 for ch in text]])   # (1, seq)
-        return {"input_ids": ids}
-
-    def decode(self, token_ids):
-        return "".join(chr(i + 32) for i in token_ids)
 
 
 class TextGenerationPipeline:
@@ -73,13 +62,14 @@ if __name__ == "__main__":
     parser.add_argument("--max-new-tokens", type=int, default=20)
     args = parser.parse_args()
 
-    # expensive one-time setup: build model + pipeline ONCE
-    config = GlmMoeDsaConfig(vocab_size=96, hidden_size=128, num_hidden_layers=2,
+    # expensive one-time setup: build model + tokenizer + pipeline ONCE
+    tokenizer = AutoTokenizer.from_pretrained(os.path.dirname(os.path.abspath(__file__)))   # tokenizer.json (minimind's 6400-vocab BPE)
+    config = GlmMoeDsaConfig(vocab_size=tokenizer.vocab_size, hidden_size=128, num_hidden_layers=2,
                              num_attention_heads=4, intermediate_size=256)   # toy sizes
     config._attn_implementation = "eager"
     model = GlmMoeDsaForCausalLM(config)
     model.eval()
-    pipe = TextGenerationPipeline(model=model, tokenizer=CharTokenizer())
+    pipe = TextGenerationPipeline(model=model, tokenizer=tokenizer)
 
     # cheap repeated call: one-shot (CLI) or loop (REPL) — output is gibberish until trained
     if args.prompt is not None:
