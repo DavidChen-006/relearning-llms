@@ -27,7 +27,11 @@ def apply_rotary_pos_emb(
     x: torch.Tensor,
     cos: torch.Tensor,
     sin: torch.Tensor,
+    unsqueeze_dim: int = 1,
     ) -> torch.Tensor:
+
+    cos = cos.unsqueeze(unsqueeze_dim)
+    sin = sin.unsqueeze(unsqueeze_dim)
 
     x_rotated = (x * cos) + (rotate_half(x) * sin)
 
@@ -156,9 +160,11 @@ class GlmMoeDsaDecoderLayer(GradientCheckpointingLayer):
         # norm
         hidden_states = self.input_layernorm(hidden_states)
         # attention
-        hidden_states, _ = self.self_attn(hidden_states, 
-            attention_mask,
-            position_embeddings=position_embeddings)   # FIX: filled args + unpack
+        hidden_states, _ = self.self_attn(
+            hidden_states,
+            attention_mask=attention_mask,
+            position_embeddings=position_embeddings,
+        )   # FIX: filled args + unpack
         # add
         hidden_states = residual + hidden_states
         # norm
