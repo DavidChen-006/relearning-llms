@@ -256,10 +256,16 @@ class GlmMoeDsaForCausalLM(GlmMoeDsaPreTrainedModel, GenerationMixin):
         self.model = GlmMoeDsaModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-    def forward(self, input_ids: torch.LongTensor) -> torch.Tensor:   # FIX: added input_ids
-        hidden_states = self.model(input_ids)          # FIX: pass input_ids; model returns a tensor
+    def forward(
+        self,
+        input_ids: torch.LongTensor,
+        labels: torch.LongTensor | None = None,        # HF contract (reference line 794): optional answers
+    ) -> torch.Tensor:
+        hidden_states = self.model(input_ids)
         logits = self.lm_head(hidden_states)           # produce logits
-        return logits                                  # FIX: added return
+        # grading-inside-the-model arrives next rung (reference lines 831-833):
+        # if labels is not None: loss = self.loss_function(logits, labels, ...)
+        return logits
 
     def generate(self, input_ids, max_new_tokens=20, eos_token_id=None):
         """The autoregressive loop (HF's version lives in GenerationMixin.generate):

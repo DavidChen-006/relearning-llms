@@ -5,6 +5,8 @@ from torch.utils.data import DataLoader
 from lm_dataset import PretrainDataset
 
 def train_epoch(epoch, loader, iters): #training loop
+        res = model(input_ids, labels=labels)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="David GLM Pretraining")
