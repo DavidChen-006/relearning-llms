@@ -6,12 +6,16 @@ Mirrors the real package split:
   data/train.bin          <- encoded ids, first 90%   (uint16 binary, regenerable)
   data/val.bin            <- encoded ids, last 10%
 """
+import os
+
 import numpy as np
 from transformers import AutoTokenizer
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))     # paths relative to training/, wherever run from
+
 text = open("data/tinyshakespeare.txt").read()
 
-tokenizer = AutoTokenizer.from_pretrained(".")           # reads tokenizer.json next to this script
+tokenizer = AutoTokenizer.from_pretrained("..")          # reads tokenizer.json in david/ (next to inference.py)
 ids = tokenizer(text)["input_ids"]                       # BPE-encode the whole corpus
 
 n = int(0.9 * len(ids))                                  # 90/10: val = unseen text for honest loss

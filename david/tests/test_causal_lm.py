@@ -2,7 +2,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))   # add david/ to the path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "architecture"))   # add david/architecture to the path
 
 import torch
 from transformers import GlmMoeDsaConfig

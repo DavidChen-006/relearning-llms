@@ -8,10 +8,12 @@ nothing else changes.
 """
 import argparse
 import os
+import sys
 
 from transformers import AutoTokenizer
 
-from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM   # YOUR classes
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "architecture"))
+from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM   # YOUR classes  # noqa: E402
 
 
 class TextGenerationPipeline:

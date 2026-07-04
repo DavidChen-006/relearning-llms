@@ -7,6 +7,7 @@ data/train.bin + val.bin (prepare_data.py) instead of their jsonl-at-runtime pat
 import argparse
 import math
 import os
+import sys
 import time
 
 import numpy as np
@@ -15,7 +16,8 @@ import torch.nn.functional as F
 from torch import optim
 from torch.utils.data import DataLoader, Dataset
 
-from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "architecture"))
+from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM  # noqa: E402
 
 
 def get_lr(current_step, total_steps, lr):   # minimind's schedule, verbatim (trainer_utils.py:40)
@@ -115,8 +117,9 @@ if __name__ == "__main__":
     parser.add_argument("--max_steps", type=int, default=10**9, help="stop early (smoke tests)")
     args = parser.parse_args()
 
-    # ========== 1. seed ==========
+    # ========== 1. seed + run from training/ (so data/checkpoint paths work anywhere) ==========
     torch.manual_seed(42)
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     # ========== 2. dirs + model config ==========
     os.makedirs(args.save_dir, exist_ok=True)
