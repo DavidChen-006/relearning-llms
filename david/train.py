@@ -5,14 +5,56 @@ armor (DDP/DistributedSampler) since this runs on one MacBook. Data comes from
 data/train.bin + val.bin (prepare_data.py) instead of their jsonl-at-runtime path.
 """
 import argparse
+import math
 import os
+import time
 
 import numpy as np
 import torch
 import torch.nn.functional as F
+from torch import optim
 from torch.utils.data import DataLoader, Dataset
 
 from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM
+
+
+def get_lr(current_step, total_steps, lr):   # minimind's schedule, verbatim (trainer_utils.py:40)
+    return lr * (0.1 + 0.45 * (1 + math.cos(math.pi * current_step / total_steps)))
+
+
+def train_epoch(epoch, loader, iters):
+    """Mirror of minimind's train_epoch: lr schedule -> forward -> grade -> backward
+    -> clip -> step, with periodic logging. (No GradScaler: that's fp16/CUDA armor.)"""
+    start_time = time.time()
+    for step, (input_ids, labels) in enumerate(loader, start=1):
+        input_ids = input_ids.to(args.device)
+        labels = labels.to(args.device)
+
+        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate)
+        for param_group in optimizer.param_groups:
+            param_group["lr"] = lr
+
+        logits = model(input_ids)                                # (B, S, vocab)
+        loss = F.cross_entropy(logits.view(-1, lm_config.vocab_size), labels.view(-1))
+        loss = loss / args.accumulation_steps
+
+        loss.backward()
+
+        if step % args.accumulation_steps == 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+
+        if step % args.log_interval == 0 or step == iters:
+            spend_time = time.time() - start_time
+            current_loss = loss.item() * args.accumulation_steps
+            eta_min = spend_time / step * (iters - step) // 60
+            print(f"Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), "
+                  f"loss: {current_loss:.4f}, lr: {lr:.8f}, eta: {eta_min:.0f}min")
+
+        if step >= args.max_steps:
+            print(f"reached --max_steps {args.max_steps}, stopping")
+            break
 
 
 class PretrainDataset(Dataset):
@@ -49,6 +91,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_hidden_layers", default=2, type=int)
     parser.add_argument("--max_seq_len", default=256, type=int)
     parser.add_argument("--data_path", type=str, default="data/train.bin")
+    parser.add_argument("--max_steps", type=int, default=10**9, help="stop early (smoke tests)")
     args = parser.parse_args()
 
     # ========== 1. seed ==========
@@ -65,17 +108,16 @@ if __name__ == "__main__":
     )
     lm_config._attn_implementation = "eager"
 
-    # ========== 5. model + data (optimizer arrives in the next spike) ==========
+    # ========== 5. model, data, optimizer ==========
     model = GlmMoeDsaForCausalLM(lm_config).to(args.device)
+    model.train()
     print(f"model params: {sum(p.numel() for p in model.parameters()):,}  device: {args.device}")
 
     train_ds = PretrainDataset(args.data_path, max_length=args.max_seq_len)
     loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
 
-    # spike-2 sanity check: one forward pass, graded.
-    # untrained model must score ~ln(6400) = 8.76 — the loss of pure random guessing.
-    input_ids, labels = next(iter(loader))
-    input_ids, labels = input_ids.to(args.device), labels.to(args.device)
-    logits = model(input_ids)                                    # (B, S, vocab)
-    loss = F.cross_entropy(logits.view(-1, lm_config.vocab_size), labels.view(-1))
-    print(f"first-batch loss: {loss.item():.4f}   (random-guess baseline: ln(6400) = {np.log(6400):.4f})")
+    # ========== 8. train ==========
+    iters = min(len(loader), args.max_steps)
+    for epoch in range(args.epochs):
+        train_epoch(epoch, loader, iters)
