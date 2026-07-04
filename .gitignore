@@ -6,3 +6,4 @@ __pycache__/
 david/training/data/*.bin
 david/training/checkpoints/
 david/training/data/*.jsonl
+david/demo/playground_data.jsonl
