@@ -4,6 +4,8 @@ from torch.utils.data import DataLoader
 
 from lm_dataset import PretrainDataset
 
+def train_epoch(epoch, loader, iters): #training loop
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="David GLM Pretraining")
     parser.add_argument("--epochs", type=int, default=1)
@@ -12,6 +14,6 @@ if __name__ == "__main__":
     train_ds = PretrainDataset()
 
 
-    for epoch in range(args.epochs):                                        # pass over the data N times
-    loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)   # fresh shuffled batches
-    train_epoch(epoch, loader, len(loader))                             # run the inner loop
+    for epoch in range(args.epochs):   #outer training loop
+        loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)   # fresh shuffled batches
+        train_epoch(epoch, loader, len(loader))                             # run the inner loop
