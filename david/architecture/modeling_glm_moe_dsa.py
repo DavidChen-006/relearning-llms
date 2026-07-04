@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import GenerationMixin, GlmMoeDsaConfig, GradientCheckpointingLayer
 from transformers.activations import ACT2FN
+from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 
 
@@ -260,12 +261,23 @@ class GlmMoeDsaForCausalLM(GlmMoeDsaPreTrainedModel, GenerationMixin):
         self,
         input_ids: torch.LongTensor,
         labels: torch.LongTensor | None = None,        # HF contract (reference line 794): optional answers
-    ) -> torch.Tensor:
+    ):
         hidden_states = self.model(input_ids)
         logits = self.lm_head(hidden_states)           # produce logits
-        # grading-inside-the-model arrives next rung (reference lines 831-833):
-        # if labels is not None: loss = self.loss_function(logits, labels, ...)
-        return logits
+
+        if labels is None:                             # INFERENCE personality: pure ids -> logits
+            return logits
+
+        # TRAINING personality (reference lines 831-833): grade the logits in-model.
+        # shift: prediction at position t is graded against token t+1 (labels arrive UNSHIFTED)
+        shift_logits = logits[:, :-1, :].contiguous()
+        shift_labels = labels[:, 1:].contiguous()
+        loss = F.cross_entropy(
+            shift_logits.view(-1, self.config.vocab_size),
+            shift_labels.view(-1),
+            ignore_index=-100,                         # padding/masked positions carry no loss
+        )
+        return CausalLMOutputWithPast(loss=loss, logits=logits)
 
     def generate(self, input_ids, max_new_tokens=20, eos_token_id=None):
         """The autoregressive loop (HF's version lives in GenerationMixin.generate):
