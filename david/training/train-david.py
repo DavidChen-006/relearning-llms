@@ -1,5 +1,5 @@
 import argparse
-
+import torch
 from torch.utils.data import DataLoader
 
 from lm_dataset import PretrainDataset
