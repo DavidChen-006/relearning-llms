@@ -50,6 +50,10 @@ print([a for a in dir(node) if not a.startswith('__')])
 print("\n=== _saved_* (forward homework) ===")
 saved = [a for a in dir(node) if a.startswith('_saved')]
 print(saved)
+for name in saved:
+    val = getattr(node, name)
+    print(f"  {name}: {type(val).__name__} = {val}")
+
 
 # [a for a in dir(node) if a.startswith('_saved')] # stashed forward inputs
 # print("=" * 70)
