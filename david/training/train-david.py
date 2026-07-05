@@ -5,7 +5,18 @@ from torch.utils.data import DataLoader
 from lm_dataset import PretrainDataset
 
 def train_epoch(epoch, loader, iters): #training loop
-        res = model(input_ids, labels=labels)
+
+    for step, (input_ids, labels) in enumerate(loader, start=1):
+        
+        res = model(input_ids, labels=labels)   #forward
+        loss = res.loss
+
+        #gradient 
+        loss.backward()
+
+        #nudge
+
+        #clean
 
 
 if __name__ == "__main__":
