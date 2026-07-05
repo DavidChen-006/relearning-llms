@@ -54,6 +54,34 @@ for name in saved:
     val = getattr(node, name)
     print(f"  {name}: {type(val).__name__} = {val}")
 
+print("\n=== next_functions (graph edges) ===")
+
+#print(node.next_functions)
+
+for parent, idx in node.next_functions:
+    pname = type(parent).__name__ if parent is not None else None
+    print(f"  parent={pname}, input_slot={idx}")
+
+print("\n" + "=" * 70)
+print("(3) THE FULL CHAIN: follow next_functions until it dead-ends")
+print("=" * 70)
+print("(walking the first parent each time — one spine of the graph, tip to leaf)\n")
+node = loss.grad_fn
+depth = 0
+while node is not None:
+    is_callable = callable(node)
+    parents = [fn for fn, _ in getattr(node, "next_functions", ()) if fn is not None]
+    n_saved = len([a for a in dir(node) if a.startswith("_saved")])
+    print(f"  {depth:>3}. {type(node).__name__:<28} callable={is_callable}  "
+          f"parents={len(parents)}  saved={n_saved}")
+    node = parents[0] if parents else None
+    depth += 1
+
+print(f"""
+ -> {depth} nodes tip-to-leaf. The walk ends at AccumulateGrad: it has NO parents
+    (empty next_functions) — that's a mailbox, the edge of the graph.
+    backward-by-hand (the other demo) is literally: seed 1.0 at node 0,
+    call each node, pass its output down this exact chain, deposit at the end.""")
 
 # [a for a in dir(node) if a.startswith('_saved')] # stashed forward inputs
 # print("=" * 70)
