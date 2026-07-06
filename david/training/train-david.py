@@ -11,10 +11,10 @@ def train_epoch(epoch, loader, iters): #training loop
         res = model(input_ids, labels=labels)   #forward
         loss = res.loss
 
-        #gradient 
+        #backprop 
         loss.backward()
 
-        #nudge
+        #gradient descent, update weights
 
         #clean
 
