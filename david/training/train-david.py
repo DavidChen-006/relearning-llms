@@ -29,10 +29,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="David GLM Pretraining")
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--batch_size", type=int, default=32, help="batch size")
+    parser.add_argument("--hidden_size", default=128, type=int)
+    parser.add_argument("--num_hidden_layers", default=2, type=int)
+
+    args = parser.parse_args()
 
     train_ds = PretrainDataset()
 
-    lm_config = GlmMoeDsaConfig
+
+
+    lm_config = GlmMoeDsaConfig(
+        hidden_size=args.hidden_size,
+        num_hidden_layers=args.num_hidden_layers,
+        num_attention_heads=4,
+        intermediate_size=args.hidden_size * 2,
+    )
 
 
     model = GlmMoeDsaForCausalLM(lm_config)
