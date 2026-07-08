@@ -1,9 +1,12 @@
 import argparse
-from david.training.train import optimizer
+
 import torch
 from torch.utils.data import DataLoader
 
+from torch import optim
+
 from lm_dataset import PretrainDataset
+from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM
 
 def train_epoch(epoch, loader, iters): #training loop
 
@@ -28,6 +31,11 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=32, help="batch size")
 
     train_ds = PretrainDataset()
+
+    lm_config = GlmMoeDsaConfig
+
+
+    model = GlmMoeDsaForCausalLM(lm_config)
 
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
 
