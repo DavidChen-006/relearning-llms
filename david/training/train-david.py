@@ -1,7 +1,9 @@
 import argparse
-from david.training.train import optimizer
+
 import torch
 from torch.utils.data import DataLoader
+
+from torch import optim
 
 from lm_dataset import PretrainDataset
 
