@@ -139,7 +139,14 @@ class GlmMoeDsaNaiveMoe(nn.Module):   # MoE add-on — deferred
 
 
 class GlmMoeDsaMoE(nn.Module):   # MoE add-on — deferred
-    pass
+    def __init__(self, config):
+        self.experts = GlmMoeDsaNaiveMoe(config)
+        self.gate = GlmMoeDsaTopkRouter(config)
+        self.shared_experts = GlmMoeDsaMLP(
+            config=config, intermediate_size=config.moe_intermediate_size * config.n_shared_experts
+        )
+
+    def forward(self, hidden_states):
 
 
 class GlmMoeDsaDecoderLayer(GradientCheckpointingLayer):
@@ -147,7 +154,12 @@ class GlmMoeDsaDecoderLayer(GradientCheckpointingLayer):
         super().__init__()
         self.hidden_size = config.hidden_size
         self.self_attn = GlmMoeDsaAttention(config, layer_idx)
-        self.mlp = GlmMoeDsaMLP(config, config.intermediate_size)                          # FIX: pass config
+
+        if config.mlp_layer_types[layer_idx] == "sparse":
+            self.mlp = GlmMoeDsaMoE(config)
+        else:
+            self.mlp = GlmMoeDsaMLP(config, config.intermediate_size)        
+                          # FIX: pass config
         self.input_layernorm = GlmMoeDsaRMSNorm(config.hidden_size, config.rms_norm_eps)   # FIX: pass args
         self.post_attention_layernorm = GlmMoeDsaRMSNorm(config.hidden_size, config.rms_norm_eps)
 

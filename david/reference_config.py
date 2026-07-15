@@ -17,3 +17,13 @@ class GlmMoeDsaConfig(PreTrainedConfig):
     intermediate_size: int = 256
     max_position_embeddings: int = 256
     hidden_act: str = "silu"
+    # Per-layer MLP kind: "dense" (GlmMoeDsaMLP) or "sparse" (GlmMoeDsaMoE).
+    # Mirrors glm/reference_config.py — default: first 3 dense, rest sparse.
+    mlp_layer_types: list[str] | None = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.mlp_layer_types is None:
+            self.mlp_layer_types = ["dense"] * min(3, self.num_hidden_layers) + ["sparse"] * (
+                self.num_hidden_layers - 3
+            )
