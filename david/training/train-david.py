@@ -10,6 +10,8 @@ from torch import optim
 # modeling_glm_moe_dsa lives in ../architecture, not next to this file
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "architecture"))
 
+from transformers import AutoTokenizer
+
 from lm_dataset import PretrainDataset
 from modeling_glm_moe_dsa import GlmMoeDsaConfig, GlmMoeDsaForCausalLM
 
@@ -41,11 +43,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    #import my tokenizer
+    # tokenizer.json lives in ../ (david/), anchored to this file so launch dir doesn't matter
+    tokenizer_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir)
 
     train_ds = PretrainDataset(data_path, tokenizer, max_length=args.max_seq_len)
-
-    tokenizer
 
     lm_config = GlmMoeDsaConfig(
         vocab_size=tokenizer.vocab_size,
