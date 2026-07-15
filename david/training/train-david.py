@@ -57,6 +57,7 @@ if __name__ == "__main__":
         num_attention_heads=4,
         intermediate_size=args.hidden_size * 2,
     )
+    lm_config._attn_implementation = "eager"
 
 
     model = GlmMoeDsaForCausalLM(lm_config)
