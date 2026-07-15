@@ -10,6 +10,7 @@ import argparse
 import os
 import sys
 
+import torch
 from transformers import AutoTokenizer
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "architecture"))
@@ -66,6 +67,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Text generation with the toy GLM model")
     parser.add_argument("--prompt", help="one-shot prompt; omit for interactive mode")
     parser.add_argument("--max-new-tokens", type=int, default=20)
+    parser.add_argument("--checkpoint", help="path to trained weights (.pth); omit for random model")
     args = parser.parse_args()
 
     # expensive one-time setup: build model + tokenizer + pipeline ONCE
@@ -74,6 +76,9 @@ if __name__ == "__main__":
                              num_attention_heads=4, intermediate_size=256)   # toy sizes
     config._attn_implementation = "eager"
     model = GlmMoeDsaForCausalLM(config)
+    if args.checkpoint is not None:   # mirrors minimind eval_llm.py:23 (init_model)
+        model.load_state_dict(torch.load(args.checkpoint, map_location="cpu"), strict=True)
+        print(f"loaded weights <- {args.checkpoint}")
     model.eval()
     pipe = TextGenerationPipeline(model=model, tokenizer=tokenizer)
 

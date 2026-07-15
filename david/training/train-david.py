@@ -43,6 +43,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_hidden_layers", default=2, type=int)
     parser.add_argument("--learning_rate", type=float, default=5e-4)
     parser.add_argument("--max_seq_len", default=512, type=int)
+    parser.add_argument("--save_dir", default="out", type=str)        # minimind: --save_dir
+    parser.add_argument("--save_weight", default="pretrain", type=str)  # minimind: --save_weight
 
     args = parser.parse_args()
 
@@ -70,3 +72,11 @@ if __name__ == "__main__":
     for epoch in range(args.epochs):   #outer training loop
         loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)   # fresh shuffled batches
         train_epoch(epoch, loader, len(loader))                             # run the inner loop
+
+    # save the trained weights (mirrors minimind train_pretrain.py:62-68, minus the
+    # DDP/scaler/half armor — half() is a GPU trick that doesn't run on CPU)
+    model.eval()
+    os.makedirs(args.save_dir, exist_ok=True)
+    ckp = f"{args.save_dir}/{args.save_weight}_{args.hidden_size}.pth"   # minimind's filename convention
+    torch.save(model.state_dict(), ckp)
+    print(f"saved weights -> {ckp}")
