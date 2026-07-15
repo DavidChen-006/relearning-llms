@@ -31,6 +31,9 @@ def train_epoch(epoch, loader, iters): #training loop
         #clean
         optimizer.zero_grad()
 
+        if step % 10 == 0:
+            print(f"epoch {epoch}  step {step}/{iters}  loss {loss.item():.4f}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="David GLM Pretraining")
