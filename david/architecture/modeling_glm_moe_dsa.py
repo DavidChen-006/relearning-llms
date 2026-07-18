@@ -131,7 +131,15 @@ class GlmMoeDsaMLP(nn.Module):
 
 
 class GlmMoeDsaTopkRouter(nn.Module):   # MoE add-on — deferred
-    pass
+    def __init__(self, config: GlmMoeDsaConfig):
+        super().__init__()
+        self.config = config
+        self.weight = nn.Parameter(torch.empty((config.n_routed_experts, config.hidden_size)))
+
+    def forward(self, hidden_states):
+        hidden_states = hidden_states.view(-1, self.config.hidden_size)
+        router_logits = F.linear(hidden_states.type(torch.float32), self.weight.type(torch.float32))
+        return router_logits
 
 
 class GlmMoeDsaNaiveMoe(nn.Module):   # MoE add-on — deferred
@@ -140,11 +148,13 @@ class GlmMoeDsaNaiveMoe(nn.Module):   # MoE add-on — deferred
 
 class GlmMoeDsaMoE(nn.Module):   # MoE add-on — deferred
     def __init__(self, config):
-        self.experts = GlmMoeDsaNaiveMoe(config)
+        super().__init__()
         self.gate = GlmMoeDsaTopkRouter(config)
+        self.experts = GlmMoeDsaNaiveMoe(config)
         self.shared_experts = GlmMoeDsaMLP(
             config=config, intermediate_size=config.moe_intermediate_size * config.n_shared_experts
         )
+
 
     def forward(self, hidden_states):
         residuals = hidden_states 
