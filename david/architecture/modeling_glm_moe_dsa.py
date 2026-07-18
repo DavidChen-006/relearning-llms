@@ -135,6 +135,7 @@ class GlmMoeDsaTopkRouter(nn.Module):   # MoE add-on — deferred
         super().__init__()
         self.config = config
         self.weight = nn.Parameter(torch.empty((config.n_routed_experts, config.hidden_size)))
+        self.n_routed_experts = config.n_routed_experts
 
     def forward(self, hidden_states):
         hidden_states = hidden_states.view(-1, self.config.hidden_size)
