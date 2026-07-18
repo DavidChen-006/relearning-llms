@@ -180,6 +180,7 @@ class GlmMoeDsaNaiveMoe(nn.Module):
 
         return final_hidden_states
 
+
 class GlmMoeDsaMoE(nn.Module):   # MoE add-on — deferred
     def __init__(self, config):
         super().__init__()
@@ -188,6 +189,10 @@ class GlmMoeDsaMoE(nn.Module):   # MoE add-on — deferred
         self.shared_experts = GlmMoeDsaMLP(
             config=config, intermediate_size=config.moe_intermediate_size * config.n_shared_experts
         )
+
+    def route_tokens_to_experts(self, router_logits):
+
+        router_logits = router_logits.sigmoid()
 
 
     def forward(self, hidden_states):
