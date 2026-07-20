@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 
@@ -33,6 +34,9 @@ def train_epoch(epoch, loader, iters): #training loop
 
         if step % 10 == 0:
             print(f"epoch {epoch}  step {step}/{iters}  loss {loss.item():.4f}")
+            # one dict of scalars per logging step — same shape wandb.log() takes later
+            with open(log_path, "a") as f:
+                f.write(json.dumps({"epoch": epoch, "step": step, "train_loss": loss.item()}) + "\n")
 
 
 if __name__ == "__main__":
@@ -77,6 +81,12 @@ if __name__ == "__main__":
     model = GlmMoeDsaForCausalLM(lm_config)
 
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
+
+    # metrics file named from the experiment flag: runs/dense.jsonl or runs/moe.jsonl
+    runs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "runs")
+    os.makedirs(runs_dir, exist_ok=True)
+    log_path = os.path.join(runs_dir, f"{args.mlp}.jsonl")
+    open(log_path, "w").close()   # fresh file each run — a run's log is one run's data
 
     for epoch in range(args.epochs):   #outer training loop
         loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)   # fresh shuffled batches

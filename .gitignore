@@ -8,3 +8,4 @@ david/training/checkpoints/
 david/training/data/*.jsonl
 david/demo/playground_data.jsonl
 david/training/out/
+david/training/runs/
