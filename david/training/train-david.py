@@ -45,6 +45,8 @@ if __name__ == "__main__":
     parser.add_argument("--max_seq_len", default=512, type=int)
     parser.add_argument("--save_dir", default="out", type=str)        # minimind: --save_dir
     parser.add_argument("--save_weight", default="pretrain", type=str)  # minimind: --save_weight
+    parser.add_argument("--mlp", default="dense", choices=["dense", "moe"],
+                        help="ablation switch: dense = all-dense layers; moe = layer 0 dense, rest sparse")
 
     args = parser.parse_args()
 
@@ -55,12 +57,19 @@ if __name__ == "__main__":
     data_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "pretrain_shakespeare.jsonl")
     train_ds = PretrainDataset(data_path, tokenizer, max_length=args.max_seq_len)
 
+    # the experiment variable: identical code both runs, only this differs
+    if args.mlp == "moe":
+        mlp_layer_types = ["dense"] + ["sparse"] * (args.num_hidden_layers - 1)
+    else:
+        mlp_layer_types = ["dense"] * args.num_hidden_layers
+
     lm_config = GlmMoeDsaConfig(
         vocab_size=tokenizer.vocab_size,
         hidden_size=args.hidden_size,
         num_hidden_layers=args.num_hidden_layers,
         num_attention_heads=4,
         intermediate_size=args.hidden_size * 2,
+        mlp_layer_types=mlp_layer_types,
     )
     lm_config._attn_implementation = "eager"
 
