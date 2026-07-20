@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 import torch
 from transformers import GlmMoeDsaConfig
 
-from modeling_glm_moe_dsa import GlmMoeDsaForCausalLM, GlmMoeDsaMoE, GlmMoeDsaTopkRouter
+from modeling_glm_moe_dsa import GlmMoeDsaForCausalLM, GlmMoeDsaMoE
 
 TOY = dict(
     vocab_size=6400,
@@ -35,16 +35,20 @@ def make_config():
 
 def test_router():
     # ---------- ARRANGE ----------
+    # Contract per the reference (practice/glm copy): the router's forward returns
+    # ONLY logits; top-k selection lives in GlmMoeDsaMoE.route_tokens_to_experts.
     torch.manual_seed(0)
     config = make_config()
-    router = GlmMoeDsaTopkRouter(config)
+    moe = GlmMoeDsaMoE(config)                  # moe.gate is the TopkRouter
     x = torch.randn(2, 3, config.hidden_size)   # (batch=2, seq=3, hidden=128) -> 6 tokens
 
     # ---------- ACT ----------
-    router_logits, topk_weights, topk_indices = router(x)
+    router_logits = moe.gate(x)                                        # step 1: score
+    topk_indices, topk_weights = moe.route_tokens_to_experts(router_logits)   # step 2: select
 
     # ---------- ASSERT ----------
     n_tokens = 2 * 3
+    assert router_logits.shape == (n_tokens, config.n_routed_experts), "one score per (token, expert)"
     assert topk_indices.shape == (n_tokens, config.num_experts_per_tok), "one row per token, k experts each"
     assert topk_weights.shape == (n_tokens, config.num_experts_per_tok), "one weight per chosen expert"
     assert (topk_indices >= 0).all() and (topk_indices < config.n_routed_experts).all(), "indices must be valid expert ids"
